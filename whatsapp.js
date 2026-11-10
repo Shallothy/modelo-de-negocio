@@ -12,11 +12,9 @@ if (!fs.existsSync(pastaAuth)) {
     fs.mkdirSync(pastaAuth, { recursive: true });
 }
 
-// Função auxiliar para extrair o texto de qualquer tipo de mensagem (inclusive temporárias)
 function extrairTexto(msg) {
     if (!msg.message) return null;
     
-    // Desempacota mensagem temporária se houver
     const conteudo = msg.message.ephemeralMessage?.message || msg.message;
     
     return conteudo.conversation || 
@@ -60,7 +58,6 @@ async function iniciarBotWhatsApp() {
         try {
             await saveCreds();
         } catch (err) {
-            // Ignora avisos transitórios
         }
     });
 
@@ -68,34 +65,25 @@ async function iniciarBotWhatsApp() {
         if (type !== 'notify') return;
 
         for (const msg of messages) {
-            // Ignora mensagens enviadas pelo próprio bot
             if (msg.key.fromMe) continue;
 
             const remetente = msg.key.remoteJid || '';
 
-            // ========================================================
-            // 🚫 FILTRO DE GRUPOS E CANAIS
-            // ========================================================
-            // Bloqueia apenas grupos (@g.us), canais (@newsletter) e status (@broadcast)
             const ehGrupo = remetente.endsWith('@g.us');
             const ehStatusOuCanal = remetente.includes('@broadcast') || remetente.includes('@newsletter');
 
             if (ehGrupo || ehStatusOuCanal) {
-                // Ignora silenciosamente mensagens de grupos e status
                 continue;
             }
 
-            // Extrai o texto da mensagem
             const corpoMensagem = extrairTexto(msg);
             if (!corpoMensagem) continue;
 
             console.log(`\n📩 [PRIVADO] Mensagem recebida de [${remetente}]: "${corpoMensagem}"`);
 
             try {
-                // Simula "digitando..."
                 await sock.sendPresenceUpdate('composing', remetente);
 
-                // Envia para o servidor Python
                 const response = await axios.post(URL_API_PYTHON, {
                     remetente: remetente,
                     mensagem: corpoMensagem
@@ -103,10 +91,8 @@ async function iniciarBotWhatsApp() {
 
                 const respostaBot = response.data.resposta;
 
-                // Para o "digitando..."
                 await sock.sendPresenceUpdate('paused', remetente);
 
-                // Envia a resposta de volta ao cliente
                 await sock.sendMessage(remetente, { text: respostaBot });
                 console.log(`📤 Resposta da Secretária enviada com sucesso!`);
 

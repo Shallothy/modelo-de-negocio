@@ -11,7 +11,6 @@ def webhook_chat():
     tipo_agente = dados.get("tipo_agente", "secretaria_grj") # Agente padrão
 
     try:
-        # Passa o tipo de agente desejado para o cérebro
         texto_resposta = responder_mensagem(
             mensagem=mensagem, 
             id_usuario=remetente, 

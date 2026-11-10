@@ -71,10 +71,6 @@ def responder_mensagem(mensagem: str, id_usuario: str = "terminal") -> str:
 
     raise RuntimeError(f"Todos os modelos da Google estão temporariamente ocupados: {ultimo_erro}")
 
-
-# =====================================================================
-# 🟢 BLOCO QUE FALTAVA PARA INICIALIZAR O CHATBOT NO TERMINAL:
-# =====================================================================
 if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("🤖 SECRETÁRIA VIRTUAL DA GRJ INICIALIZADA!")
