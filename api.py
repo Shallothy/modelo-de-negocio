@@ -1,24 +1,31 @@
 from flask import Flask, request, jsonify
-from chatbot_grj import chatbot_grj
+from chatbot_grj import responder_mensagem
 
 app = Flask(__name__)
 
-@app.route("/chat", method=["POST"])
+@app.route("/chat", methods=["POST"])
 def webhook_chat():
-    dados = request.get_json()
+    dados = request.get_json() or {}
     remetente = dados.get("remetente")
     mensagem = dados.get("mensagem")
-
-    if not remetente or not mensagem:
-        return jsonify({"erro" : "Dados inválidos"}), 400
+    tipo_agente = dados.get("tipo_agente", "secretaria_grj") # Agente padrão
 
     try:
-        texto_mensagem = chatbot_grj.responder_mensagem(mensagem = mensagem, usuario_id = remetente)
-        return jsonify({"resposta" : "Desculpe tive uma instabilidade momentânea. Pode repetir por favor?"})
-    except Exception as e:
-        print(f"Erro ao processar a mensagem {e}")
-        return jsonify({"resposta": "Desculpe, tive uma instabilidade momentânea. Pode repetir por favor?"}), 500
+        # Passa o tipo de agente desejado para o cérebro
+        texto_resposta = responder_mensagem(
+            mensagem=mensagem, 
+            id_usuario=remetente, 
+            agente=tipo_agente
+        )
+        return jsonify({"resposta": texto_resposta}), 200
 
-if __name__ == "main":
-    print("🚀 API do WhatsApp conectada ao Gemini rodando na porta 5000...")
-    app.run(host="0.0.0.0", port=5000)
+    except Exception as e:
+        print(f"\n❌ [FALHA NO AGENTE {tipo_agente}]: {e}")
+        return jsonify({
+            "resposta": "Olá! Nosso assistente virtual está passando por uma breve atualização. Em instantes um atendente falará com você!"
+        }), 200
+
+if __name__ == "__main__":
+    print("\n✓ Servidor da API GRJ pronto!")
+    print("🚀 API do WhatsApp conectada ao Gemini rodando na porta 5000...\n")
+    app.run(host="127.0.0.1", port=5000)

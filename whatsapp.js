@@ -2,27 +2,38 @@ const { default: makeWASocket, useMultiFileAuthState, DisconnectReason } = requi
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const axios = require('axios');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
 
 const URL_API_PYTHON = 'http://127.0.0.1:5000/chat';
+const pastaAuth = path.join(__dirname, 'auth_info_baileys');
 
-// Define o caminho absoluto para a pasta de autenticação
-const pastaAuth = path.resolve(__dirname, 'auth_info_baileys');
-
-// Garante que a pasta existe antes de o Baileys inicializar
 if (!fs.existsSync(pastaAuth)) {
     fs.mkdirSync(pastaAuth, { recursive: true });
 }
 
+// Função auxiliar para extrair o texto de qualquer tipo de mensagem (inclusive temporárias)
+function extrairTexto(msg) {
+    if (!msg.message) return null;
+    
+    // Desempacota mensagem temporária se houver
+    const conteudo = msg.message.ephemeralMessage?.message || msg.message;
+    
+    return conteudo.conversation || 
+           conteudo.extendedTextMessage?.text || 
+           conteudo.imageMessage?.caption || 
+           null;
+}
+
 async function iniciarBotWhatsApp() {
-    // Usa o caminho absoluto criado
     const { state, saveCreds } = await useMultiFileAuthState(pastaAuth);
 
     const sock = makeWASocket({
         auth: state,
         logger: pino({ level: 'silent' }),
-        printQRInTerminal: false
+        printQRInTerminal: false,
+        browser: ['GRJ Secretária', 'Chrome', '1.0.0'],
+        syncFullHistory: false
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -45,25 +56,46 @@ async function iniciarBotWhatsApp() {
         }
     });
 
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', async () => {
+        try {
+            await saveCreds();
+        } catch (err) {
+            // Ignora avisos transitórios
+        }
+    });
 
     sock.ev.on('messages.upsert', async ({ messages, type }) => {
         if (type !== 'notify') return;
 
         for (const msg of messages) {
-            if (msg.key.fromMe || msg.key.remoteJid.includes('@broadcast')) continue;
+            // Ignora mensagens enviadas pelo próprio bot
+            if (msg.key.fromMe) continue;
 
-            const remetente = msg.key.remoteJid;
-            const corpoMensagem = msg.message?.conversation || 
-                                  msg.message?.extendedTextMessage?.text;
+            const remetente = msg.key.remoteJid || '';
 
+            // ========================================================
+            // 🚫 FILTRO DE GRUPOS E CANAIS
+            // ========================================================
+            // Bloqueia apenas grupos (@g.us), canais (@newsletter) e status (@broadcast)
+            const ehGrupo = remetente.endsWith('@g.us');
+            const ehStatusOuCanal = remetente.includes('@broadcast') || remetente.includes('@newsletter');
+
+            if (ehGrupo || ehStatusOuCanal) {
+                // Ignora silenciosamente mensagens de grupos e status
+                continue;
+            }
+
+            // Extrai o texto da mensagem
+            const corpoMensagem = extrairTexto(msg);
             if (!corpoMensagem) continue;
 
-            console.log(`📩 Mensagem recebida de [${remetente}]: ${corpoMensagem}`);
+            console.log(`\n📩 [PRIVADO] Mensagem recebida de [${remetente}]: "${corpoMensagem}"`);
 
             try {
+                // Simula "digitando..."
                 await sock.sendPresenceUpdate('composing', remetente);
 
+                // Envia para o servidor Python
                 const response = await axios.post(URL_API_PYTHON, {
                     remetente: remetente,
                     mensagem: corpoMensagem
@@ -71,18 +103,23 @@ async function iniciarBotWhatsApp() {
 
                 const respostaBot = response.data.resposta;
 
+                // Para o "digitando..."
                 await sock.sendPresenceUpdate('paused', remetente);
+
+                // Envia a resposta de volta ao cliente
                 await sock.sendMessage(remetente, { text: respostaBot });
-                console.log(`📤 Resposta enviada para [${remetente}]`);
+                console.log(`📤 Resposta da Secretária enviada com sucesso!`);
 
             } catch (error) {
-                console.error('❌ Erro ao comunicar com a API Python:', error.message);
+                console.error('❌ Erro ao chamar a API Python:', error.message);
                 await sock.sendMessage(remetente, {
-                    text: 'Olá! Tivemos uma breve oscilação no sistema. Em breve nossa equipe retornará seu contato.'
+                    text: 'Olá! Tivemos uma breve oscilação técnica. Em instantes retornaremos seu contato.'
                 });
             }
         }
     });
 }
 
-iniciarBotWhatsApp();
+iniciarBotWhatsApp().catch(err => {
+    console.error('Erro fatal na inicialização:', err);
+});
