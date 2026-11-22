@@ -1,8 +1,11 @@
 import time
 import requests
+
+from firebase_admin import firestore
 from database.database import db
 
 URL_DISPARO_WHATSAPP = "http://127.0.0.1:3001/enviar-ativo"
+
 
 def chamar_novos_leads_firebase():
     """
@@ -14,16 +17,16 @@ def chamar_novos_leads_firebase():
         return
 
     print("\n🔍 Buscando novos leads no Firebase para contato ativo...")
-    
+
     docs = db.collection("leads_grj").where("status", "==", "novo_lead").stream()
-    
+
     leads_encontrados = False
 
     for doc in docs:
         leads_encontrados = True
         dados = doc.to_dict()
         doc_id = doc.id
-        
+
         nome = dados.get("nome", "Amigo(a)")
         telefone = dados.get("telefone_limpo") or dados.get("telefone")
         empresa = dados.get("nome_empresa", "sua empresa")
@@ -47,7 +50,7 @@ def chamar_novos_leads_firebase():
             if resposta.status_code == 200:
                 db.collection("leads_grj").document(doc_id).update({
                     "status": "contatado",
-                    "contatado_em": requests.utils.default_user_agent() # ou data atual
+                    "contatado_em": firestore.SERVER_TIMESTAMP
                 })
                 print(f"✅ Mensagem entregue com sucesso para {nome}! Status atualizado no Firebase.")
             else:
