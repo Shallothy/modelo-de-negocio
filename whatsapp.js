@@ -67,6 +67,7 @@ async function iniciarBotWhatsApp() {
         for (const msg of messages) {
             if (msg.key.fromMe) continue;
 
+            // Filtro criado para ignorar qualquer mensagens que forem direcionadas a um grupo ou comunidade no whatsapp
             const remetente = msg.key.remoteJid || '';
 
             const ehGrupo = remetente.endsWith('@g.us');

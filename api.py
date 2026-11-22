@@ -3,6 +3,9 @@ from chatbot_grj import responder_mensagem
 
 app = Flask(__name__)
 
+def home():
+    return "<h1>🟢 API da Secretária Virtual GRJ está ONLINE e pronta no WhatsApp!</h1>", 200
+
 @app.route("/chat", methods=["POST"])
 def webhook_chat():
     dados = request.get_json() or {}
@@ -14,7 +17,6 @@ def webhook_chat():
         texto_resposta = responder_mensagem(
             mensagem=mensagem, 
             id_usuario=remetente, 
-            agente=tipo_agente
         )
         return jsonify({"resposta": texto_resposta}), 200
 

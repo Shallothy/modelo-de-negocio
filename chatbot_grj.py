@@ -64,13 +64,14 @@ def responder_mensagem(mensagem: str, id_usuario: str = "terminal") -> str:
                 ultimo_erro = erro_str
                 if "503" in erro_str or "high demand" in erro_str.lower() or "unavailable" in erro_str.lower():
                     print(f"⚠️ Modelo {modelo} em alta demanda. Tentando contingência...")
-                    time.sleep(1.2)
+                    time.sleep(0.5)
                     continue
                 else:
                     raise e
 
     raise RuntimeError(f"Todos os modelos da Google estão temporariamente ocupados: {ultimo_erro}")
 
+
 if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("🤖 SECRETÁRIA VIRTUAL DA GRJ INICIALIZADA!")
@@ -87,26 +88,6 @@ if __name__ == "__main__":
         if not pergunta.strip():
             continue
 
-        try:
-            resposta = responder_mensagem(pergunta, id_usuario="terminal")
-            print(f"\nSecretária GRJ:\n{resposta}\n")
-        except Exception as e:
-            print(f"\nErro ao responder: {e}\n")
-
-if __name__ == "__main__":
-    print("\n" + "=" * 50)
-    print("🤖 SECRETÁRIA VIRTUAL DA GRJ INICIALIZADA!")
-    print("Digite 'sair' a qualquer momento para finalizar.")
-    print("=" * 50 + "\n")
-    while True:
-        pergunta = input("Você: ")
-        
-        if pergunta.strip().lower() in ["sair", "exit", "quit"]:
-            print("\nSecretária GRJ: Foi um prazer atender você! Até logo.")
-            break
-            
-        if not pergunta.strip():
-            continue
         try:
             resposta = responder_mensagem(pergunta, id_usuario="terminal")
             print(f"\nSecretária GRJ:\n{resposta}\n")
